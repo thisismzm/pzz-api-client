@@ -59,6 +59,11 @@ class Pzz_Api_Client
     protected $version;
 
     /**
+     * Check woocommerce plugin existence
+     */
+    protected $isWoocommerceActive;
+
+    /**
      * Define the core functionality of the plugin.
      *
      * Set the plugin name and the plugin version that can be used throughout the plugin.
@@ -76,6 +81,8 @@ class Pzz_Api_Client
         }
         $this->plugin_name = 'pzz-api-client';
 
+        
+        $this->setWoocommerceExistence();
         $this->load_dependencies();
         $this->register_apis();
         $this->json_api_default_filters();
@@ -155,14 +162,18 @@ class Pzz_Api_Client
          * The class responsible for create APIs and response to the API calls.
          * TODO: Refactor the controller includes process. @see {Automattic\WooCommerce\RestApi\Server}
          */
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/lib/woocommerce/includes/class-pzz-wc-cart-handler.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/lib/woocommerce/extends/includes/class-pzz-wc-checkout.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/lib/woocommerce/extends/api/class-pzz-wc-api-server.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/lib/woocommerce/extends/api/class-pzz-wc-api-resource.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/lib/woocommerce/extends/api/class-pzz-wc-api-orders.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/lib/woocommerce/extends/api/class-pzz-wc-api-customers.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/lib/api/class-pzz-api-controller.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/lib/api/class-pzz-wc-api-controller.php';
+        
+        if ($this->isWoocommerceActive) {
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/lib/api/class-pzz-api-wc-rest-products-controller.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/lib/api/class-pzz-api-wc-rest-product-categories-controller.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/lib/api/class-pzz-api-wc-rest-product-variations-controller.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/lib/api/class-pzz-api-wc-rest-product-tags-controller.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/lib/api/class-pzz-api-wc-rest-product-attributes-controller.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/lib/api/class-pzz-api-wc-rest-product-attribute-terms-controller.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/lib/api/class-pzz-api-wc-rest-orders-controller.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/lib/api/class-pzz-api-wc-rest-products-review-controller.php';
+        }
 
         /**
          *  The helper classes.
@@ -279,79 +290,6 @@ class Pzz_Api_Client
         ];
 
         /**
-         * Woocommerce related routes
-         * @since    1.2.0
-         */
-        $wc_core = new PZZ_WC_API_Controller('pzz/wc', $this->get_api_version('wc'));
-
-        $routes[] = [
-            'method' => 'GET',
-            'handler' => $wc_core,
-            'path' => 'orders',
-            'callback' => 'get_current_user_orders',
-            'args' => function () {
-                return [];
-            },
-            'is_secure' => true
-        ];
-
-        $routes[] = [
-            'method' => 'POST',
-            'handler' => $wc_core,
-            'path' => 'orders/checkout',
-            'callback' => 'checkout_order',
-            'args' => function () {
-                return [];
-            },
-            'is_secure' => true
-        ];
-
-
-        $routes[] = [
-            'method' => 'POST',
-            'handler' => $wc_core,
-            'path' => 'customers',
-            'callback' => 'create_new_customer',
-            'args' => function () {
-                return [];
-            },
-            'is_secure' => false
-        ];
-
-        $routes[] = [
-            'method' => 'POST',
-            'handler' => $wc_core,
-            'path' => 'customers/reset-password',
-            'callback' => 'reset_customer_password',
-            'args' => function () {
-                return [];
-            },
-            'is_secure' => false
-        ];
-
-        $routes[] = [
-            'method' => 'POST',
-            'handler' => $wc_core,
-            'path' => 'customers/change-password',
-            'callback' => 'change_customer_password',
-            'args' => function () {
-                return [];
-            },
-            'is_secure' => true
-        ];
-
-        $routes[] = [
-            'method' => 'POST',
-            'handler' => $wc_core,
-            'path' => 'customers/edit',
-            'callback' => 'edit_customer',
-            'args' => function () {
-                return [];
-            },
-            'is_secure' => true
-        ];
-
-        /**
          * @since    1.2.0 Get handler from $routes.
          * @since    1.0.0
          */
@@ -366,6 +304,34 @@ class Pzz_Api_Client
                 $route['args'](),
                 $route['is_secure'] ?? null
             );
+        }
+
+        if ($this->isWoocommerceActive) {
+            add_action( 'rest_api_init', function() {
+                $products_controller = new PZZ_API_WC_REST_Products_Controller();
+                $products_controller->pzz_api_register_routes();
+                
+                $produts_categories_controller = new PZZ_API_WC_REST_Product_Categories_Controller();
+                $produts_categories_controller->pzz_api_register_routes();
+
+                $produts_variations_controller = new PZZ_API_WC_REST_Product_Variations_Controller();
+                $produts_variations_controller->pzz_api_register_routes();
+
+                $produts_tags_controller = new PZZ_API_WC_REST_Product_Tags_Controller();
+                $produts_tags_controller->pzz_api_register_routes();
+
+                $produts_attributes_controller = new PZZ_API_WC_REST_Product_Attributes_Controller();
+                $produts_attributes_controller->pzz_api_register_routes();
+
+                $produts_attributes_terms_controller = new PZZ_API_WC_REST_Product_Attribute_Terms_Controller();
+                $produts_attributes_terms_controller->pzz_api_register_routes();
+
+                $orders_controller = new PZZ_API_WC_REST_Orders_Controller();
+                $orders_controller->pzz_api_register_routes();
+
+                $product_reviews_controller = new PZZ_API_WC_REST_Product_Reviews_Controller();
+                $product_reviews_controller->pzz_api_register_routes();
+            });
         }
     }
 
@@ -459,5 +425,13 @@ class Pzz_Api_Client
             default:
                 return '1';
         }
+    }
+
+    private function setWoocommerceExistence()
+    {
+        /**
+         * Check if WooCommerce is active
+         **/
+        $this->isWoocommerceActive = in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) );
     }
 }

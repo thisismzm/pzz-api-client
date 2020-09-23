@@ -121,7 +121,7 @@ class PZZ_JSON_Taxonomies {
 		return apply_filters( 'json_prepare_term', $data, $term, $context );
 	}
 
-		/**
+	/**
 	 * Checks whether a given request has permission to read taxonomies.
 	 *
 	 * @since 1.1.1

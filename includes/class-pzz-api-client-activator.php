@@ -19,8 +19,7 @@ class Pzz_Api_Client_Activator {
 	 *
 	 * @since    1.0.0
 	 */
-	public static function activate()
-	{
+	public static function activate() {
 		// doing actions that are required for activation
 	}
 }
